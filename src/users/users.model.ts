@@ -10,12 +10,11 @@ interface UserCreationAttrs {
 export class User extends Model<User, UserCreationAttrs> {
   @ApiProperty({ example: '1' })
   @Column({
-    type: DataType.INTEGER,
+    type: DataType.UUIDV4,
     unique: true,
-    autoIncrement: true,
     primaryKey: true,
   })
-  id: number;
+  id: string;
 
   @ApiProperty({ example: 'user@example.com' })
   @Column({
@@ -24,6 +23,14 @@ export class User extends Model<User, UserCreationAttrs> {
     allowNull: false,
   })
   email: string;
+
+  @ApiProperty({ example: 'user' })
+  @Column({
+    type: DataType.STRING,
+    unique: false,
+    allowNull: false,
+  })
+  name: string;
 
   @ApiProperty({ example: '1234567890' })
   @Column({
