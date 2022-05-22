@@ -1,3 +1,4 @@
+import { AccessTokenGuard } from './common/guards/AccessToken.guard';
 import { Module } from '@nestjs/common';
 import { SequelizeModule } from '@nestjs/sequelize';
 import { ConfigModule } from '@nestjs/config';
@@ -5,6 +6,8 @@ import { ConfigModule } from '@nestjs/config';
 import { UsersModule } from './users/users.module';
 import { User } from './users/users.model';
 import { AuthModule } from './auth/auth.module';
+import { ChessRoomWsModule } from './chess-room-ws/chess-room.module';
+import { APP_GUARD } from '@nestjs/core';
 import { ChessRoomModule } from './chess-room/chess-room.module';
 @Module({
   controllers: [],
@@ -25,6 +28,13 @@ import { ChessRoomModule } from './chess-room/chess-room.module';
     UsersModule,
     AuthModule,
     ChessRoomModule,
+    ChessRoomWsModule,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: AccessTokenGuard,
+    },
   ],
 })
 export class AppModule {}

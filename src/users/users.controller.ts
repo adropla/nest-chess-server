@@ -1,16 +1,9 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Post,
-  UseGuards,
-  UsePipes,
-} from '@nestjs/common';
+import { Controller, Get, UseGuards } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { ValidationPipe } from 'src/pipes/validation.pipe';
 
-import { CreateUserDto } from './dto/create-user.dto';
+import { AuthUserDto } from '../auth/dto';
 import { User } from './users.model';
 import { UsersService } from './users.service';
 
@@ -27,11 +20,19 @@ export class UsersController {
     return this.usersService.createUser(userDto);
   }
 
+  @UseGuards(AuthGuard('jwt'))
   @ApiOperation({ summary: 'Get all users' })
   @ApiResponse({ status: 200, type: [User] })
-  @UseGuards(JwtAuthGuard)
   @Get()
-  getAll() {
+  getAllUsers() {
     return this.usersService.getAllUsers();
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @ApiOperation({ summary: 'Get all users' })
+  @ApiResponse({ status: 200, type: [User] })
+  @Get()
+  getAllInitializedGames() {
+    // return this.usersService.getAllInitializedGames();
   }
 }
