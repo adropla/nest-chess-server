@@ -1,4 +1,5 @@
 import {
+  ForbiddenException,
   HttpException,
   HttpStatus,
   Injectable,
@@ -7,9 +8,13 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 
-import { CreateUserDto } from 'src/users/dto/create-user.dto';
-import { User } from 'src/users/users.model';
+import { AuthUserDto } from 'src/auth/dto';
+import {
+  ACCESS_TOKEN_EXP_TIME,
+  REFRESH_TOKEN_EXP_TIME,
+} from 'src/constants/jwt';
 import { UsersService } from 'src/users/users.service';
+import { DecodedToken, Tokens } from './types';
 
 @Injectable()
 export class AuthService {
@@ -18,12 +23,39 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
-  async login(userDto: CreateUserDto) {
-    const user = await this.validateUser(userDto);
-    return this.generateToken(user);
+  private async getTokens(userId: string, email: string) {
+    const [accessToken, refreshToken] = await Promise.all([
+      this.jwtService.signAsync(
+        {
+          userId,
+          email,
+        },
+        {
+          secret:
+            process.env.PRIVATE_KEY_ACCESS || 'SECRETACCESSNUMBER1NESTJSAPP',
+          expiresIn: ACCESS_TOKEN_EXP_TIME,
+        },
+      ),
+      this.jwtService.signAsync(
+        {
+          userId,
+          email,
+        },
+        {
+          secret:
+            process.env.PRIVATE_KEY_REFRESH || 'SECRETREFRESHNUMBER1NESTJSAPP',
+          expiresIn: REFRESH_TOKEN_EXP_TIME,
+        },
+      ),
+    ]);
+
+    return {
+      accessToken,
+      refreshToken,
+    };
   }
 
-  private async validateUser(userDto: CreateUserDto) {
+  private async validateUser(userDto: AuthUserDto) {
     const user = await this.userService.getUserByEmail(userDto.email);
     const isPasswordEquals = await bcrypt.compare(
       userDto.password,
@@ -37,7 +69,14 @@ export class AuthService {
     });
   }
 
-  async registration(userDto: CreateUserDto) {
+  async login(userDto: AuthUserDto): Promise<Tokens> {
+    const user = await this.validateUser(userDto);
+    const tokens = await this.getTokens(user.id, user.email);
+    await this.updateRefreshTokenHash(user.id, tokens.refreshToken);
+    return tokens;
+  }
+
+  async registration(userDto: AuthUserDto): Promise<Tokens> {
     const candidate = await this.userService.getUserByEmail(userDto.email);
 
     if (candidate) {
@@ -47,18 +86,47 @@ export class AuthService {
       );
     }
 
-    const hashPassword = await bcrypt.hash(userDto.password, 5);
+    const hashPassword = await bcrypt.hash(userDto.password, 10);
     const user = await this.userService.createUser({
       ...userDto,
       password: hashPassword,
     });
-    return this.generateToken(user);
+    const tokens = await this.getTokens(user.id, user.email);
+    await this.updateRefreshTokenHash(user.id, tokens.refreshToken);
+    return tokens;
   }
 
-  private async generateToken(user: User) {
-    const payload = { email: user.email, id: user.id };
-    return {
-      token: this.jwtService.sign(payload),
-    };
+  async updateRefreshTokenHash(id: string, refreshToken: string) {
+    const hash = await bcrypt.hash(refreshToken, 10);
+    await this.userService.updateRefreshToken(id, hash);
+  }
+
+  async logout(userId: string) {
+    await this.userService.setRefreshTokenNull(userId);
+  }
+
+  async refreshTokens(id: string, refreshToken: string) {
+    const user = await this.userService.getUserById(id);
+
+    if (!user || !user.hashedRefreshToken) {
+      throw new ForbiddenException('Access Denied');
+    }
+
+    const isRefreshTokenEquals = await bcrypt.compare(
+      refreshToken,
+      user.hashedRefreshToken,
+    );
+
+    if (user && isRefreshTokenEquals) {
+      const tokens = await this.getTokens(user.id, user.email);
+      await this.updateRefreshTokenHash(user.id, tokens.refreshToken);
+      return tokens;
+    }
+    throw new ForbiddenException('Access Denied');
+  }
+
+  getDecodedToken(jwt: any) {
+    const decodedJwt = this.jwtService.decode(jwt) as DecodedToken;
+    return decodedJwt;
   }
 }

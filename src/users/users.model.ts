@@ -8,9 +8,9 @@ interface UserCreationAttrs {
 
 @Table({ tableName: 'users' })
 export class User extends Model<User, UserCreationAttrs> {
-  @ApiProperty({ example: '1' })
+  @ApiProperty({ example: 'UUIDv4' })
   @Column({
-    type: DataType.UUIDV4,
+    type: DataType.STRING,
     unique: true,
     primaryKey: true,
   })
@@ -23,6 +23,14 @@ export class User extends Model<User, UserCreationAttrs> {
     allowNull: false,
   })
   email: string;
+
+  @ApiProperty({ example: 'hashed jwt' })
+  @Column({
+    type: DataType.STRING,
+    unique: true,
+    allowNull: true,
+  })
+  hashedRefreshToken: string;
 
   @ApiProperty({ example: 'user' })
   @Column({
@@ -38,4 +46,11 @@ export class User extends Model<User, UserCreationAttrs> {
     allowNull: false,
   })
   password: string;
+
+  @ApiProperty({ example: '["uuidv4", "uuidv4", "uuidv4"]' })
+  @Column({
+    type: DataType.STRING,
+    allowNull: false,
+  })
+  games: string[];
 }

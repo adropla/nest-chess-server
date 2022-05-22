@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { v4 as uuidv4 } from 'uuid';
 
-import { CreateUserDto } from './dto/create-user.dto';
+import { AuthUserDto } from '../auth/dto';
 
 import { User } from './users.model';
 
@@ -10,9 +10,11 @@ import { User } from './users.model';
 export class UsersService {
   constructor(@InjectModel(User) private userRepository: typeof User) {}
 
-  async createUser(dto: CreateUserDto) {
-    const dtoWithId = { ...dto, id: uuidv4() };
-    const user = await this.userRepository.create(dtoWithId);
+  async createUser(userDto: AuthUserDto) {
+    const endIndexOfFirstPartEmail = userDto.email.indexOf('@');
+    const name = userDto.email.slice(0, endIndexOfFirstPartEmail);
+    const newUserDto = { ...userDto, id: uuidv4(), name: name };
+    const user = await this.userRepository.create(newUserDto);
     return user;
   }
 
@@ -27,5 +29,37 @@ export class UsersService {
       include: { all: true },
     });
     return user;
+  }
+
+  async getUserById(id: string) {
+    const user = await this.userRepository.findOne({
+      where: { id },
+      include: { all: true },
+    });
+    return user;
+  }
+
+  async updateRefreshToken(id: string, refreshToken: string) {
+    await this.userRepository.update(
+      { hashedRefreshToken: refreshToken },
+      {
+        where: {
+          id: id,
+        },
+      },
+    );
+  }
+
+  async setRefreshTokenNull(id: string) {
+    await this.userRepository.update(
+      {
+        hashedRefreshToken: null,
+      },
+      {
+        where: {
+          id: id,
+        },
+      },
+    );
   }
 }
