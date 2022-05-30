@@ -34,18 +34,33 @@ export class AuthController {
     const decodedRefreshToken = this.authService.getDecodedToken(
       tokens.refreshToken,
     );
-    response.cookie('refreshToken', tokens.refreshToken, {
-      httpOnly: true,
-      expires: new Date(decodedRefreshToken.exp * 1000),
-    });
+    if (tokens.refreshToken) {
+      response.cookie('refreshToken', tokens.refreshToken, {
+        httpOnly: true,
+        expires: new Date(decodedRefreshToken.exp * 1000),
+      });
+    }
     return { accessToken: tokens.accessToken };
   }
 
   @Public()
   @HttpCode(HttpStatus.CREATED)
   @Post('registration')
-  registration(@Body() userDto: AuthUserDto) {
-    return this.authService.registration(userDto);
+  async registration(
+    @Body() userDto: AuthUserDto,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const tokens = await this.authService.registration(userDto);
+    const decodedRefreshToken = this.authService.getDecodedToken(
+      tokens.refreshToken,
+    );
+    if (tokens.refreshToken) {
+      response.cookie('refreshToken', tokens.refreshToken, {
+        httpOnly: true,
+        expires: new Date(decodedRefreshToken.exp * 1000),
+      });
+    }
+    return { accessToken: tokens.accessToken };
   }
 
   @Post('logout')

@@ -49,8 +49,15 @@ export class User extends Model<User, UserCreationAttrs> {
 
   @ApiProperty({ example: '["uuidv4", "uuidv4", "uuidv4"]' })
   @Column({
-    type: DataType.STRING,
-    allowNull: false,
+    type: DataType.ARRAY(DataType.STRING),
+    allowNull: true,
   })
   games: string[];
+
+  @ApiProperty({ example: '800' })
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: true,
+  })
+  rating: number;
 }

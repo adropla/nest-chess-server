@@ -1,8 +1,13 @@
 import { Module } from '@nestjs/common';
-import { ChessRoomService } from './chess-room.service';
+import { SequelizeModule } from '@nestjs/sequelize';
 import { ChessRoomGateway } from './chess-room.gateway';
+import { ChessRoomController } from './chess-room.controller';
+import { ChessRoomService } from './chess-room.service';
+import { ChessRoom } from './chess-room.model';
 
 @Module({
-  providers: [ChessRoomGateway, ChessRoomService],
+  controllers: [ChessRoomController],
+  providers: [ChessRoomService, ChessRoomGateway],
+  imports: [SequelizeModule.forFeature([ChessRoom])],
 })
 export class ChessRoomModule {}
