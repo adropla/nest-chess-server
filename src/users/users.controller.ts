@@ -1,4 +1,11 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  UseGuards,
+  UsePipes,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ValidationPipe } from 'src/pipes/validation.pipe';
@@ -12,15 +19,14 @@ import { UsersService } from './users.service';
 export class UsersController {
   constructor(private usersService: UsersService) {}
 
-  @ApiOperation({ summary: 'Create user' })
-  @ApiResponse({ status: 200, type: User })
-  @UsePipes(ValidationPipe)
-  @Post()
-  create(@Body() userDto: CreateUserDto) {
-    return this.usersService.createUser(userDto);
-  }
+  // @ApiOperation({ summary: 'Create user' })
+  // @ApiResponse({ status: 200, type: User })
+  // @UsePipes(ValidationPipe)
+  // @Post()
+  // create(@Body() userDto: CreateUserDto) {
+  //   return this.usersService.createUser(userDto);
+  // }
 
-  @UseGuards(AuthGuard('jwt'))
   @ApiOperation({ summary: 'Get all users' })
   @ApiResponse({ status: 200, type: [User] })
   @Get()
@@ -28,7 +34,6 @@ export class UsersController {
     return this.usersService.getAllUsers();
   }
 
-  @UseGuards(AuthGuard('jwt'))
   @ApiOperation({ summary: 'Get all users' })
   @ApiResponse({ status: 200, type: [User] })
   @Get()

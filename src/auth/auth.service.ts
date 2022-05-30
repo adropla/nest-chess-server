@@ -8,13 +8,13 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 
-import { AuthUserDto } from 'src/auth/dto';
+import { AuthUserDto } from './dto';
 import {
   ACCESS_TOKEN_EXP_TIME,
   REFRESH_TOKEN_EXP_TIME,
-} from 'src/constants/jwt';
+} from '../constants/jwt';
 import { UsersService } from 'src/users/users.service';
-import { DecodedToken, Tokens } from './types';
+import { TDecodedToken, TTokens } from './types';
 
 @Injectable()
 export class AuthService {
@@ -23,12 +23,11 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
-  private async getTokens(userId: string, email: string) {
+  private async getTokens(userId: string) {
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(
         {
           userId,
-          email,
         },
         {
           secret:
@@ -39,7 +38,6 @@ export class AuthService {
       this.jwtService.signAsync(
         {
           userId,
-          email,
         },
         {
           secret:
@@ -57,26 +55,32 @@ export class AuthService {
 
   private async validateUser(userDto: AuthUserDto) {
     const user = await this.userService.getUserByEmail(userDto.email);
+    if (!user) {
+      throw new UnauthorizedException({
+        message: 'Пользователя с таким email не существует',
+      });
+    }
     const isPasswordEquals = await bcrypt.compare(
       userDto.password,
       user.password,
     );
-    if (user && isPasswordEquals) {
-      return user;
+    if (!isPasswordEquals) {
+      throw new UnauthorizedException({
+        message: 'Неправильный пароль',
+      });
     }
-    throw new UnauthorizedException({
-      message: 'Некорректный email или пароль',
-    });
+
+    return user;
   }
 
-  async login(userDto: AuthUserDto): Promise<Tokens> {
+  async login(userDto: AuthUserDto): Promise<TTokens> {
     const user = await this.validateUser(userDto);
-    const tokens = await this.getTokens(user.id, user.email);
+    const tokens = await this.getTokens(user.id);
     await this.updateRefreshTokenHash(user.id, tokens.refreshToken);
     return tokens;
   }
 
-  async registration(userDto: AuthUserDto): Promise<Tokens> {
+  async registration(userDto: AuthUserDto): Promise<TTokens> {
     const candidate = await this.userService.getUserByEmail(userDto.email);
 
     if (candidate) {
@@ -91,7 +95,7 @@ export class AuthService {
       ...userDto,
       password: hashPassword,
     });
-    const tokens = await this.getTokens(user.id, user.email);
+    const tokens = await this.getTokens(user.id);
     await this.updateRefreshTokenHash(user.id, tokens.refreshToken);
     return tokens;
   }
@@ -118,7 +122,7 @@ export class AuthService {
     );
 
     if (user && isRefreshTokenEquals) {
-      const tokens = await this.getTokens(user.id, user.email);
+      const tokens = await this.getTokens(user.id);
       await this.updateRefreshTokenHash(user.id, tokens.refreshToken);
       return tokens;
     }
@@ -126,7 +130,7 @@ export class AuthService {
   }
 
   getDecodedToken(jwt: any) {
-    const decodedJwt = this.jwtService.decode(jwt) as DecodedToken;
+    const decodedJwt = this.jwtService.decode(jwt) as TDecodedToken;
     return decodedJwt;
   }
 }

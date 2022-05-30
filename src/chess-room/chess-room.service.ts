@@ -1,39 +1,110 @@
-import { Injectable } from '@nestjs/common';
-import { CreateChessRoomDto } from './dto/create-chess-room.dto';
+import { ForbiddenException, Injectable } from '@nestjs/common';
+import { InjectModel } from '@nestjs/sequelize';
+import { v4 as uuidv4 } from 'uuid';
+
+import { GameOptionsDto } from './dto/game-options.dto';
+import { ChessRoom } from './chess-room.model';
+import { TChessRoom } from './types';
 import { CreateMessageDto } from './dto/create-message.dto';
-import { Message } from './entities/message.entity';
 
 @Injectable()
 export class ChessRoomService {
-  messages: Message[] = [{ fen: '' }];
-  clientToUser = {};
+  constructor(
+    @InjectModel(ChessRoom) private chessRoomRepository: typeof ChessRoom,
+  ) {}
 
-  createMessage(createMessageDto: CreateMessageDto) {
-    const message = { ...createMessageDto };
-    this.messages.push(message);
-    console.log(this.messages);
-    return message;
+  async createRoom(gameOptions: GameOptionsDto, userId: string) {
+    const newChessRoom: TChessRoom = {
+      ...gameOptions,
+      roomId: uuidv4(),
+      blackPlayerId: null,
+      whitePlayerId: null,
+      fen: [],
+    };
+    if (Math.random() >= 0.5) {
+      newChessRoom.whitePlayerId = userId;
+    } else {
+      newChessRoom.blackPlayerId = userId;
+    }
+    const chessRoom = await this.chessRoomRepository.create(newChessRoom);
+    return {
+      roomId: chessRoom.roomId,
+      url: `/game/${chessRoom.roomId}`,
+    };
   }
 
-  identify(name: string, clientId: string) {
-    this.clientToUser[clientId] = name;
+  async joinRoom(roomId: string, userId: string) {
+    const chessRoom = await this.chessRoomRepository.findOne({
+      where: { roomId },
+      include: { all: true },
+    });
+    if (chessRoom) {
+      const anotherSide = chessRoom.whitePlayerId
+        ? 'blackPlayerId'
+        : 'whitePlayerId';
+      if (
+        (!chessRoom.whitePlayerId || !chessRoom.blackPlayerId) &&
+        chessRoom.whitePlayerId !== userId &&
+        chessRoom.blackPlayerId !== userId
+      ) {
+        chessRoom[anotherSide] = userId;
+        chessRoom.save();
+      }
+      if (
+        userId === chessRoom.whitePlayerId ||
+        userId === chessRoom.blackPlayerId
+      ) {
+        const userSide =
+          chessRoom.whitePlayerId === userId
+            ? 'whitePlayerId'
+            : 'blackPlayerId';
+        const opponentSide =
+          userSide === 'whitePlayerId' ? 'blackPlayerId' : 'whitePlayerId';
 
-    return Object.values(this.clientToUser);
+        return {
+          side: userSide[0],
+          roomId,
+          userId,
+          fen: chessRoom.fen,
+          opponentId: chessRoom[opponentSide],
+        };
+      }
+    }
+
+    throw new ForbiddenException('Access denied');
   }
 
-  getClientName(clientId: string) {
-    return this.clientToUser[clientId];
+  async findAllMessages(roomId: string) {
+    const room = await this.chessRoomRepository.findOne({
+      where: {
+        roomId: roomId,
+      },
+      include: { all: true },
+    });
+    console.log(room.fen);
+    return room.fen;
   }
 
-  createRoom(createChessRoomDto: CreateChessRoomDto) {
-    return;
-  }
-
-  findAllMessages() {
-    return this.messages;
-  }
-
-  join() {
-    return;
+  async addFenMove(createMessageDto: CreateMessageDto) {
+    const room = await this.chessRoomRepository.findOne({
+      where: {
+        roomId: createMessageDto.roomId,
+      },
+      include: { all: true },
+    });
+    const localFen = [...room.fen];
+    localFen.push(createMessageDto.message);
+    room.update(
+      {
+        fen: localFen,
+      },
+      {
+        where: {
+          roomId: createMessageDto.roomId,
+        },
+      },
+    );
+    console.log(room);
+    return room;
   }
 }

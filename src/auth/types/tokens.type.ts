@@ -1,9 +1,9 @@
-export type Tokens = {
+export type TTokens = {
   accessToken: string;
   refreshToken: string;
 };
 
-export type DecodedToken = {
+export type TDecodedToken = {
   userId: string;
   email: string;
   iat: number;
