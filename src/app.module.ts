@@ -23,8 +23,10 @@ import { ChessRoomModule } from './chess-room/chess-room.module';
     SequelizeModule.forRoot({
       dialect: 'postgres',
       dialectOptions: {
-        require: true, // This will help you. But you will see nwe error
-        rejectUnauthorized: false, // This line will fix new error
+        ssl: {
+          require: true, // This will help you. But you will see nwe error
+          rejectUnauthorized: false, // This line will fix new error
+        },
       },
       host: process.env.POSTGRES_HOST,
       port: Number(process.env.POSTGRESS_PORT),
