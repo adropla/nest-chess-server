@@ -2,15 +2,21 @@ import { AccessTokenGuard } from './common/guards/AccessToken.guard';
 import { Module } from '@nestjs/common';
 import { SequelizeModule } from '@nestjs/sequelize';
 import { ConfigModule } from '@nestjs/config';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { APP_GUARD } from '@nestjs/core';
+
+import { join } from 'path';
 
 import { UsersModule } from './users/users.module';
 import { User } from './users/users.model';
 import { AuthModule } from './auth/auth.module';
-import { APP_GUARD } from '@nestjs/core';
 import { ChessRoomModule } from './chess-room/chess-room.module';
 @Module({
   controllers: [],
   imports: [
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', 'client'),
+    }),
     ConfigModule.forRoot({
       envFilePath: `.${process.env.NODE_ENV}.env`,
     }),
