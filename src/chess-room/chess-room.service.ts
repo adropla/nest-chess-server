@@ -1,5 +1,6 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
+import { Chess } from 'chess.js';
 import { v4 as uuidv4 } from 'uuid';
 
 import { GameOptionsDto } from './dto/game-options.dto';
@@ -12,6 +13,7 @@ export class ChessRoomService {
   constructor(
     @InjectModel(ChessRoom) private chessRoomRepository: typeof ChessRoom,
   ) {}
+  private readonly chessGame = Chess();
 
   async createRoom(gameOptions: GameOptionsDto, userId: string) {
     const newChessRoom: TChessRoom = {
@@ -48,7 +50,7 @@ export class ChessRoomService {
         chessRoom.blackPlayerId !== userId
       ) {
         chessRoom[anotherSide] = userId;
-        chessRoom.save();
+        await chessRoom.save();
       }
       if (
         userId === chessRoom.whitePlayerId ||
@@ -85,6 +87,53 @@ export class ChessRoomService {
     return room.fen;
   }
 
+  async isGameOver(createMessageDto: CreateMessageDto) {
+    const room = await this.chessRoomRepository.findOne({
+      where: {
+        roomId: createMessageDto.roomId,
+      },
+      include: { all: true },
+    });
+    this.chessGame.load(createMessageDto.message);
+    if (this.chessGame.in_draw()) {
+      await room.update(
+        {
+          isDraw: true,
+        },
+        {
+          where: {
+            roomId: createMessageDto.roomId,
+          },
+        },
+      );
+      return {
+        isDraw: true,
+        winner: null,
+      };
+    }
+    if (this.chessGame.in_checkmate()) {
+      const side = createMessageDto.messageTurn;
+      const winnerSide = side === 'b' ? 'whitePlayerId' : 'blackPlayerId';
+      const winnerId = room[winnerSide];
+      await room.update(
+        {
+          winner: winnerId,
+          isDraw: false,
+        },
+        {
+          where: {
+            roomId: createMessageDto.roomId,
+          },
+        },
+      );
+      return {
+        isDraw: false,
+        winner: winnerId,
+      };
+    }
+    return false;
+  }
+
   async addFenMove(createMessageDto: CreateMessageDto) {
     const room = await this.chessRoomRepository.findOne({
       where: {
@@ -94,7 +143,7 @@ export class ChessRoomService {
     });
     const localFen = [...room.fen];
     localFen.push(createMessageDto.message);
-    room.update(
+    await room.update(
       {
         fen: localFen,
       },

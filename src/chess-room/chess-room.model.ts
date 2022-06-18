@@ -44,6 +44,24 @@ export class ChessRoom extends Model<ChessRoom, ChessRoomCreationAttrs> {
   })
   timeMode: string;
 
+  @ApiProperty({ example: 'false' })
+  @Column({
+    type: DataType.BOOLEAN,
+    unique: false,
+    primaryKey: false,
+    allowNull: true,
+  })
+  isDraw: boolean;
+
+  @ApiProperty({ example: 'white player or black player' })
+  @Column({
+    type: DataType.STRING,
+    unique: false,
+    primaryKey: false,
+    allowNull: true,
+  })
+  winner: string;
+
   @ApiProperty({
     example: '[rnbqkbnr/pppppppp/8/8/5P2/8/PPPPP1PP/RNBQKBNR b KQkq f3 0 1]',
   })

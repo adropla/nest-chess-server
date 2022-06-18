@@ -50,6 +50,7 @@ export class ChessRoomGateway
     @MessageBody() createMessageDto: CreateMessageDto,
   ) {
     const message = await this.chessRoomService.addFenMove(createMessageDto);
+    const isGameOver = await this.chessRoomService.isGameOver(createMessageDto);
 
     this.logger.log(`WS MESSEGE ${createMessageDto.message} FROM ${client.id}`);
     this.logger.log(
@@ -60,6 +61,10 @@ export class ChessRoomGateway
       .to(createMessageDto.roomId)
       .except(client.id)
       .emit('opponent move', createMessageDto);
+
+    if (isGameOver !== false) {
+      this.wsServer.to(createMessageDto.roomId).emit('gameIsOver', isGameOver);
+    }
 
     return message;
   }
@@ -75,9 +80,9 @@ export class ChessRoomGateway
       await this.chessRoomService.joinRoom(roomId, userId);
       client.emit('joined', { mySocketId: client.id });
     }
+    console.log(this.wsServer.to(roomId).allSockets());
     if ((await this.wsServer.to(roomId).allSockets()).size === 2) {
       this.wsServer.to(roomId).emit('gameStart');
     }
-    console.log((await this.wsServer.to(roomId).allSockets()).size);
   }
 }
