@@ -23,10 +23,12 @@ import { ChessRoomModule } from './chess-room/chess-room.module';
     SequelizeModule.forRoot({
       dialect: 'postgres',
       dialectOptions: {
-        ssl: {
-          require: process.env.POSTGRES_SSL,
-          rejectUnauthorized: false,
-        },
+        ssl: process.env.POSTGRES_SSL
+          ? {
+              require: process.env.POSTGRES_SSL,
+              rejectUnauthorized: false,
+            }
+          : false,
       },
       host: process.env.POSTGRES_HOST,
       port: Number(process.env.POSTGRESS_PORT),
