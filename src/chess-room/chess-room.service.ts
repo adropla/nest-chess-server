@@ -35,6 +35,28 @@ export class ChessRoomService {
     };
   }
 
+  async gameIsOver(roomId: string) {
+    const chessRoom = await this.chessRoomRepository.findOne({
+      where: { roomId },
+      include: { all: true },
+    });
+    if (chessRoom) {
+      if (chessRoom.winner) {
+        return {
+          isDraw: false,
+          winner: chessRoom.winner,
+        };
+      }
+      if (chessRoom.isDraw) {
+        return {
+          isDraw: true,
+          winner: null,
+        };
+      }
+    }
+    return false;
+  }
+
   async joinRoom(roomId: string, userId: string) {
     const chessRoom = await this.chessRoomRepository.findOne({
       where: { roomId },

@@ -75,6 +75,11 @@ export class ChessRoomGateway
     @MessageBody('roomId') roomId: string,
     @MessageBody('userId') userId: string,
   ) {
+    const isGameOver = await this.chessRoomService.gameIsOver(roomId);
+    if (isGameOver !== false) {
+      client.emit('gameIsOver', isGameOver);
+      return;
+    }
     if ((await this.wsServer.to(roomId).allSockets()).size < 2) {
       client.join(roomId);
       await this.chessRoomService.joinRoom(roomId, userId);
