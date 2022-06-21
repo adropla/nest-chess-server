@@ -9,6 +9,7 @@ import {
   HttpStatus,
   UseGuards,
   Res,
+  Req,
 } from '@nestjs/common';
 import { AuthUserDto } from 'src/auth/dto/auth-user.dto';
 import {
@@ -16,7 +17,7 @@ import {
   GetCurrentUserId,
   Public,
 } from 'src/common/decorators';
-import { Response } from 'express';
+import { Response, Request } from 'express';
 
 @ApiTags('Authorization')
 @Controller('auth')
@@ -74,13 +75,30 @@ export class AuthController {
   }
 
   @Public()
-  @UseGuards(RefreshTokenGuard)
+  // @UseGuards(RefreshTokenGuard)
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
-  refreshTokens(
-    @GetCurrentUser('refreshToken') refreshToken: string,
-    @GetCurrentUserId() userId: string,
+  async refreshTokens(
+    @Req() req: Request,
+    @Res({ passthrough: true }) response: Response,
   ) {
-    return this.authService.refreshTokens(userId, refreshToken);
+    const refreshToken = req.headers['cookie'].slice(13);
+    const decodedRefreshToken = this.authService.getDecodedToken(refreshToken);
+    console.log(refreshToken);
+    console.log(decodedRefreshToken);
+    const newTokens = await this.authService.refreshTokens(
+      decodedRefreshToken.userId,
+      refreshToken,
+    );
+    const newDecodedRefreshToken = this.authService.getDecodedToken(
+      newTokens.refreshToken,
+    );
+    if (newTokens.refreshToken) {
+      response.cookie('refreshToken', newTokens.refreshToken, {
+        httpOnly: true,
+        expires: new Date(newDecodedRefreshToken.exp * 1000),
+      });
+    }
+    return { accessToken: newTokens.accessToken };
   }
 }

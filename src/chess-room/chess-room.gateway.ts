@@ -31,8 +31,9 @@ export class ChessRoomGateway
   }
 
   handleDisconnect(client: Socket) {
-    const clientRooms = client.rooms;
+    const clientRooms = client.rooms.keys();
     this.logger.log('Client rooms:', ...clientRooms);
+    this.wsServer.to(clientRooms[0]).emit('opponentWasDisconnected');
     for (const room in clientRooms) {
       client.leave(room);
     }
@@ -71,6 +72,28 @@ export class ChessRoomGateway
 
   @SubscribeMessage('joinRoom')
   async join(
+    @ConnectedSocket() client: Socket,
+    @MessageBody('roomId') roomId: string,
+    @MessageBody('userId') userId: string,
+  ) {
+    const isGameOver = await this.chessRoomService.gameIsOver(roomId);
+    if (isGameOver !== false) {
+      client.emit('gameIsOver', isGameOver);
+      return;
+    }
+    if ((await this.wsServer.to(roomId).allSockets()).size < 2) {
+      client.join(roomId);
+      await this.chessRoomService.joinRoom(roomId, userId);
+      client.emit('joined', { mySocketId: client.id });
+    }
+    console.log(this.wsServer.to(roomId).allSockets());
+    if ((await this.wsServer.to(roomId).allSockets()).size === 2) {
+      this.wsServer.to(roomId).emit('gameStart');
+    }
+  }
+
+  @SubscribeMessage('giveUp')
+  async giveUp(
     @ConnectedSocket() client: Socket,
     @MessageBody('roomId') roomId: string,
     @MessageBody('userId') userId: string,

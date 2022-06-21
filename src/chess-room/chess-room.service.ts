@@ -7,11 +7,13 @@ import { GameOptionsDto } from './dto/game-options.dto';
 import { ChessRoom } from './chess-room.model';
 import { TChessRoom } from './types';
 import { CreateMessageDto } from './dto/create-message.dto';
+import { UsersService } from 'src/users/users.service';
 
 @Injectable()
 export class ChessRoomService {
   constructor(
     @InjectModel(ChessRoom) private chessRoomRepository: typeof ChessRoom,
+    private userService: UsersService,
   ) {}
   private readonly chessGame = Chess();
 
@@ -31,7 +33,7 @@ export class ChessRoomService {
     const chessRoom = await this.chessRoomRepository.create(newChessRoom);
     return {
       roomId: chessRoom.roomId,
-      url: `/game/${chessRoom.roomId}`,
+      url: `${chessRoom.roomId}`,
     };
   }
 
@@ -109,6 +111,39 @@ export class ChessRoomService {
     return room.fen;
   }
 
+  async giveUp(roomId: string, userId: string) {
+    const room = await this.chessRoomRepository.findOne({
+      where: {
+        roomId,
+      },
+      include: { all: true },
+    });
+    const winnerSide =
+      userId === room.whitePlayerId ? 'blackPlayerId' : 'whitePlayerId';
+    const winnerId = room[winnerSide];
+    const loserId =
+      room[winnerSide === 'blackPlayerId' ? 'whitePlayerId' : 'blackPlayerId'];
+    await room.update(
+      {
+        winner: winnerId,
+        isDraw: false,
+      },
+      {
+        where: {
+          roomId,
+        },
+      },
+    );
+    try {
+      await this.userService.changeRating(winnerId, loserId);
+    } catch {}
+    return {
+      isDraw: false,
+      winner: winnerId,
+      winnerColor: winnerSide,
+    };
+  }
+
   async isGameOver(createMessageDto: CreateMessageDto) {
     const room = await this.chessRoomRepository.findOne({
       where: {
@@ -135,8 +170,12 @@ export class ChessRoomService {
     }
     if (this.chessGame.in_checkmate()) {
       const side = createMessageDto.messageTurn;
-      const winnerSide = side === 'b' ? 'whitePlayerId' : 'blackPlayerId';
+      const winnerSide = side === 'b' ? 'blackPlayerId' : 'whitePlayerId';
       const winnerId = room[winnerSide];
+      const loserId =
+        room[
+          winnerSide === 'blackPlayerId' ? 'whitePlayerId' : 'blackPlayerId'
+        ];
       await room.update(
         {
           winner: winnerId,
@@ -148,9 +187,13 @@ export class ChessRoomService {
           },
         },
       );
+      try {
+        await this.userService.changeRating(winnerId, loserId);
+      } catch {}
       return {
         isDraw: false,
         winner: winnerId,
+        winnerColor: winnerSide,
       };
     }
     return false;
