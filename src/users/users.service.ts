@@ -18,9 +18,9 @@ export class UsersService {
     return user;
   }
 
-  async getAllUsers() {
-    const allUsers = await this.userRepository.findAll();
-    return allUsers;
+  async getAllGames(userId: string) {
+    const user = await this.getUserById(userId);
+    return user.games;
   }
 
   async getUserByEmail(email: string) {
@@ -40,14 +40,8 @@ export class UsersService {
   }
 
   async changeRating(winnerId: string, loserId: string) {
-    const winner = await this.userRepository.findOne({
-      where: { id: winnerId },
-      include: { all: true },
-    });
-    const loser = await this.userRepository.findOne({
-      where: { id: loserId },
-      include: { all: true },
-    });
+    const winner = await this.getUserById(winnerId);
+    const loser = await this.getUserById(loserId);
     const ratingDifference =
       Math.round(Math.abs(winner.rating - loser.rating) / 2) + 3;
     await this.userRepository.update(
@@ -60,6 +54,20 @@ export class UsersService {
       { rating: loser.rating - ratingDifference },
       {
         where: { id: loserId },
+      },
+    );
+  }
+
+  async addGame(id: string, roomId: string) {
+    const user = await this.getUserById(id);
+    const games = user.games || [];
+    games.push(roomId);
+    const uniqueGames = [...new Set(games)];
+    console.log(games);
+    await this.userRepository.update(
+      { games: uniqueGames },
+      {
+        where: { id },
       },
     );
   }

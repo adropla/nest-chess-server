@@ -47,6 +47,10 @@ export class ChessRoomService {
         return {
           isDraw: false,
           winner: chessRoom.winner,
+          winnerColor:
+            chessRoom.whitePlayerId === chessRoom.winner
+              ? 'whitePlayerId'
+              : 'blackPlayerId',
         };
       }
       if (chessRoom.isDraw) {
@@ -144,6 +148,17 @@ export class ChessRoomService {
     };
   }
 
+  async addGameToUsers(roomId: string) {
+    const room = await this.chessRoomRepository.findOne({
+      where: {
+        roomId,
+      },
+      include: { all: true },
+    });
+    await this.userService.addGame(room.whitePlayerId, room.roomId);
+    await this.userService.addGame(room.blackPlayerId, room.roomId);
+  }
+
   async isGameOver(createMessageDto: CreateMessageDto) {
     const room = await this.chessRoomRepository.findOne({
       where: {
@@ -163,6 +178,7 @@ export class ChessRoomService {
           },
         },
       );
+
       return {
         isDraw: true,
         winner: null,

@@ -88,6 +88,7 @@ export class ChessRoomGateway
     }
     console.log(this.wsServer.to(roomId).allSockets());
     if ((await this.wsServer.to(roomId).allSockets()).size === 2) {
+      await this.chessRoomService.addGameToUsers(roomId);
       this.wsServer.to(roomId).emit('gameStart');
     }
   }
@@ -98,19 +99,15 @@ export class ChessRoomGateway
     @MessageBody('roomId') roomId: string,
     @MessageBody('userId') userId: string,
   ) {
+    try {
+      await this.chessRoomService.giveUp(roomId, userId);
+    } catch {}
     const isGameOver = await this.chessRoomService.gameIsOver(roomId);
     if (isGameOver !== false) {
-      client.emit('gameIsOver', isGameOver);
+      this.wsServer
+        .to(roomId)
+        .emit('gameIsOver', { ...isGameOver, text: 'Противник сдался' });
       return;
-    }
-    if ((await this.wsServer.to(roomId).allSockets()).size < 2) {
-      client.join(roomId);
-      await this.chessRoomService.joinRoom(roomId, userId);
-      client.emit('joined', { mySocketId: client.id });
-    }
-    console.log(this.wsServer.to(roomId).allSockets());
-    if ((await this.wsServer.to(roomId).allSockets()).size === 2) {
-      this.wsServer.to(roomId).emit('gameStart');
     }
   }
 }

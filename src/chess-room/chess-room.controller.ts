@@ -41,4 +41,13 @@ export class ChessRoomController {
     const userId = authUserId ? authUserId : unAuthUserId;
     return this.chessRoomService.joinRoom(roomId, userId);
   }
+
+  @ApiOperation({ summary: 'Join Room via link' })
+  @ApiResponse({ status: 200 })
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Post('gameIsOver/:roomId')
+  gameIsOver(@Param('roomId') roomId: string) {
+    return this.chessRoomService.gameIsOver(roomId);
+  }
 }

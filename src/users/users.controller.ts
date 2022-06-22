@@ -33,9 +33,9 @@ export class UsersController {
 
   @ApiOperation({ summary: 'Get all users' })
   @ApiResponse({ status: 200, type: [User] })
-  @Get('/all')
-  getAllUsers() {
-    return this.usersService.getAllUsers();
+  @Post('/games')
+  getAllUsers(@GetCurrentUserId() userId: string) {
+    return this.usersService.getAllGames(userId);
   }
 
   @ApiOperation({ summary: 'Get user data' })
